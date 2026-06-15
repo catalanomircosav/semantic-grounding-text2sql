@@ -1,0 +1,57 @@
+# =========================
+# ENV / Secrets
+# =========================
+.env
+.env.*
+*.env
+
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+
+# =========================
+# Virtual environments
+# =========================
+.venv/
+venv/
+env/
+ENV/
+
+# =========================
+# Jupyter
+# =========================
+.ipynb_checkpoints/
+
+
+!outputs/logs/.gitkeep
+!outputs/checkpoints/.gitkeep
+!outputs/metrics/.gitkeep
+
+# =========================
+# OS files
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# IDE
+# =========================
+.vscode/
+.idea/
+
+# =========================
+# Temp / debug
+# =========================
+*.log
+*.tmp
+*.bak
+
+# dataset 
+data/spider/database/
+
+# Python cache
+__pycache__/
+*.pyc
