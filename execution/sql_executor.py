@@ -80,6 +80,9 @@ class SQLExecutor:
         conn = None
         try:
             conn = sqlite3.connect(db_path)
+            # ! impedisco modifiche al database (per sicurezza)
+            conn.execute("PRAGMA query_only = ON")
+
             cursor = conn.cursor()
 
             cursor.execute(sql)

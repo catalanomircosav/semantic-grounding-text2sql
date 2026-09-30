@@ -1,0 +1,6 @@
+- visit represents one museum visit record by a visitor.
+- visit.Num_of_Ticket is the number of tickets bought in that single visit, not the number of separate visits.
+- To find visitors who visited more than once, count visit rows per visitor: GROUP BY visitor_ID HAVING COUNT(*) > 1.
+- Total_spent is the money spent in a visit; total spending by a visitor requires SUM(Total_spent) grouped by visitor_ID.
+- Preserve the column order requested by the question.
+- For "largest/highest/most" questions asking for one result, use ORDER BY ... DESC LIMIT 1 unless ties are explicitly requested.

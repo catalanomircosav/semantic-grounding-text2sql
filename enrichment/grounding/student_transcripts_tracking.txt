@@ -1,0 +1,15 @@
+- Student_Enrolment records a student's enrolment in one degree program during one semester.
+- Student_Enrolment_Courses links an enrolment to courses.
+- Sections are course sections; count Sections rows to count sections per course.
+- Transcript_Contents links transcripts to course results; count rows there for course results.
+- For counting related records, use INNER JOIN from the detail/relationship table unless zero-count entities are explicitly requested.
+- Preserve requested output order: "name and id" means name first, id second; "date and id" means date first, id second.
+- For students enrolled in a program type, use DISTINCT because students may appear in multiple enrolment rows.
+- Degree_Programs.degree_summary_name uses exact values such as 'Bachelor'.
+- The state North Carolina is stored as 'NorthCarolina'.
+- For "substring the X", search for X, not the literal phrase "the X".
+- For "courses with/at most/less than N sections", use INNER JOIN Courses-Sections and count Sections rows. Do not include courses with zero sections unless explicitly requested.
+- In this DB, "number of students enrolled" usually means number of Student_Enrolment rows, not COUNT(DISTINCT student_id).
+- For degree-program enrolment counts, use COUNT(*) over Student_Enrolment rows.
+- For questions asking students enrolled in 2 degree programs, match Spider by grouping only by student_id and using HAVING COUNT(*) = 2, even if the wording mentions "in one semester".
+- When the requested output is only course_name, group by course_name rather than course_id.

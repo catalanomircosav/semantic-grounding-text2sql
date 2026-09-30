@@ -1,0 +1,226 @@
+[
+  {
+    "id": "scope_stadium_zero_concerts",
+    "ambiguity_type": "entity_event_scope",
+    "ambiguous_question": "Show each stadium with its number of concerts.",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Whether stadiums with no recorded concerts should also be included with a count of zero.",
+    "user_resolution": "Include every stadium, including stadiums with no recorded concerts, using zero for their count.",
+    "resolved_question": "Show every stadium with its number of recorded concerts, including stadiums with no concerts with a count of zero.",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT s.Name, COUNT(c.concert_ID) FROM stadium AS s LEFT JOIN concert AS c ON s.Stadium_ID = c.Stadium_ID GROUP BY s.Stadium_ID"
+  },
+  {
+    "id": "scope_average_participations_all_singers",
+    "ambiguity_type": "entity_event_scope",
+    "ambiguous_question": "What is the average number of concert participations per singer?",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Whether singers with no recorded participation should be included in the average with zero participations.",
+    "user_resolution": "Include all singers in the average, treating singers with no recorded participation as zero.",
+    "resolved_question": "What is the average number of concert participations per singer across all singers, counting singers with no participation as zero?",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT AVG(concert_count) FROM (SELECT s.Singer_ID, COUNT(sic.concert_ID) AS concert_count FROM singer AS s LEFT JOIN singer_in_concert AS sic ON s.Singer_ID = sic.Singer_ID GROUP BY s.Singer_ID)"
+  },
+  {
+    "id": "scope_youngest_participating_singer",
+    "ambiguity_type": "entity_event_scope",
+    "ambiguous_question": "Who is the youngest singer in the concert data?",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Whether the search should cover every singer in the singer table or only singers with recorded concert participation.",
+    "user_resolution": "Consider only singers with at least one recorded concert participation.",
+    "resolved_question": "Who is the youngest singer among singers with at least one recorded concert participation?",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT s.Name, s.Age FROM singer AS s WHERE EXISTS (SELECT 1 FROM singer_in_concert AS sic WHERE sic.Singer_ID = s.Singer_ID) AND s.Age = (SELECT MIN(s2.Age) FROM singer AS s2 WHERE EXISTS (SELECT 1 FROM singer_in_concert AS sic2 WHERE sic2.Singer_ID = s2.Singer_ID))"
+  },
+  {
+    "id": "scope_average_capacity_used_stadiums",
+    "ambiguity_type": "entity_event_scope",
+    "ambiguous_question": "What is the average capacity of stadiums in the concert data?",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Whether the average should include every stadium or only stadiums with at least one recorded concert.",
+    "user_resolution": "Use only stadiums that have hosted at least one recorded concert, counting each stadium once.",
+    "resolved_question": "What is the average capacity of stadiums that have hosted at least one recorded concert, counting each stadium once?",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT AVG(s.Capacity) FROM stadium AS s WHERE EXISTS (SELECT 1 FROM concert AS c WHERE c.Stadium_ID = s.Stadium_ID)"
+  },
+
+  {
+    "id": "aggregation_participating_singer_age",
+    "ambiguity_type": "aggregation_semantics",
+    "ambiguous_question": "What is the average age of singers in the concert participation records?",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Whether each distinct singer should contribute once or repeated concert participations should give a singer more weight.",
+    "user_resolution": "Treat each distinct participating singer once, regardless of how many concerts they participated in.",
+    "resolved_question": "What is the average age of distinct singers with at least one concert participation, counting each singer once?",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT AVG(s.Age) FROM singer AS s WHERE s.Singer_ID IN (SELECT DISTINCT sic.Singer_ID FROM singer_in_concert AS sic)"
+  },
+  {
+    "id": "aggregation_participating_song_year",
+    "ambiguity_type": "aggregation_semantics",
+    "ambiguous_question": "What is the average song release year for singers represented in concert participation records?",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Whether each distinct singer should contribute once or singers should be weighted by their number of participation records.",
+    "user_resolution": "Count each distinct participating singer once when computing the average.",
+    "resolved_question": "What is the average song release year across distinct singers with at least one concert participation, counting each singer once?",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT AVG(s.Song_release_year) FROM singer AS s WHERE s.Singer_ID IN (SELECT DISTINCT sic.Singer_ID FROM singer_in_concert AS sic)"
+  },
+  {
+    "id": "aggregation_gender_age",
+    "ambiguity_type": "aggregation_semantics",
+    "ambiguous_question": "What is the average age of male and female singers?",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Whether one combined average is required or a separate average for male and female singers.",
+    "user_resolution": "Give a separate average age for each gender value.",
+    "resolved_question": "Show the average singer age separately for each value of Is_male.",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT Is_male, AVG(Age) FROM singer GROUP BY Is_male"
+  },
+  {
+    "id": "aggregation_concert_year_by_stadium",
+    "ambiguity_type": "aggregation_semantics",
+    "ambiguous_question": "What is the average concert year for stadiums?",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Whether one average across all concerts is required or a separate average concert year for each stadium.",
+    "user_resolution": "Calculate a separate average concert year for each stadium that has recorded concerts.",
+    "resolved_question": "For each stadium with recorded concerts, show the stadium name and its average concert year.",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT s.Name, AVG(c.Year) FROM concert AS c JOIN stadium AS s ON c.Stadium_ID = s.Stadium_ID GROUP BY s.Stadium_ID"
+  },
+
+  {
+    "id": "duplicates_participating_countries",
+    "ambiguity_type": "duplicate_semantics",
+    "ambiguous_question": "List the countries represented in the concert participation records.",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Whether each country should appear once or repeated once for every concert participation record.",
+    "user_resolution": "Return one country value for every participation record, preserving duplicates.",
+    "resolved_question": "List one singer country for every concert participation record, preserving repeated country values.",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT s.Country FROM singer_in_concert AS sic JOIN singer AS s ON sic.Singer_ID = s.Singer_ID"
+  },
+  {
+    "id": "duplicates_stadium_per_concert",
+    "ambiguity_type": "duplicate_semantics",
+    "ambiguous_question": "List the stadiums used for concerts.",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Whether each stadium should appear only once or once for every concert held there.",
+    "user_resolution": "Return one stadium name for every concert record, preserving repeated stadium names.",
+    "resolved_question": "List one stadium name for every recorded concert, preserving repeated stadium names.",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT s.Name FROM concert AS c JOIN stadium AS s ON c.Stadium_ID = s.Stadium_ID"
+  },
+  {
+    "id": "duplicates_concert_years",
+    "ambiguity_type": "duplicate_semantics",
+    "ambiguous_question": "List the years in which concerts were held.",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Whether each year should appear only once or once for every concert record.",
+    "user_resolution": "Return one year for every concert record, preserving repeated years.",
+    "resolved_question": "List the year of every recorded concert, preserving repeated year values.",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT Year FROM concert"
+  },
+  {
+    "id": "duplicates_singer_song_participations",
+    "ambiguity_type": "duplicate_semantics",
+    "ambiguous_question": "List the singer and song names represented in concert participation records.",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Whether each singer-song pair should appear once or once for every concert participation.",
+    "user_resolution": "Return one singer and song pair for every participation record, preserving repetitions.",
+    "resolved_question": "For every concert participation record, list the singer name and song name, preserving repeated pairs.",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT s.Name, s.Song_Name FROM singer_in_concert AS sic JOIN singer AS s ON sic.Singer_ID = s.Singer_ID"
+  },
+
+  {
+    "id": "count_distinct_participating_singers",
+    "ambiguity_type": "count_semantics",
+    "ambiguous_question": "How many singers are represented in concert participation records?",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Whether to count distinct singers or the total number of singer-concert participation records.",
+    "user_resolution": "Count distinct singers, not participation records.",
+    "resolved_question": "How many distinct singers have at least one recorded concert participation?",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT COUNT(DISTINCT Singer_ID) FROM singer_in_concert"
+  },
+  {
+    "id": "count_distinct_used_stadiums",
+    "ambiguity_type": "count_semantics",
+    "ambiguous_question": "How many stadiums are represented by the concert records?",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Whether to count distinct stadiums or the number of concert records associated with stadiums.",
+    "user_resolution": "Count distinct stadiums that occur in concert records.",
+    "resolved_question": "How many distinct stadiums have at least one recorded concert?",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT COUNT(DISTINCT Stadium_ID) FROM concert"
+  },
+  {
+    "id": "count_distinct_concert_years",
+    "ambiguity_type": "count_semantics",
+    "ambiguous_question": "How many concert years are represented in the data?",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Whether to count distinct year values or the total number of concert records.",
+    "user_resolution": "Count distinct year values.",
+    "resolved_question": "How many distinct year values occur among the recorded concerts?",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT COUNT(DISTINCT Year) FROM concert"
+  },
+  {
+    "id": "count_distinct_participating_countries",
+    "ambiguity_type": "count_semantics",
+    "ambiguous_question": "How many countries are represented among singers in concert participation records?",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Whether to count distinct countries or count singers or participation records carrying a country value.",
+    "user_resolution": "Count distinct countries represented by participating singers.",
+    "resolved_question": "How many distinct countries are represented by singers with at least one concert participation?",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT COUNT(DISTINCT s.Country) FROM singer_in_concert AS sic JOIN singer AS s ON sic.Singer_ID = s.Singer_ID"
+  },
+
+  {
+    "id": "missing_singer_song",
+    "ambiguity_type": "missing_reference",
+    "ambiguous_question": "What is that singer's song name?",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Which singer the user is referring to.",
+    "user_resolution": "I mean Justin Brown.",
+    "resolved_question": "What is Justin Brown's song name?",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT Song_Name FROM singer WHERE Name = 'Justin Brown'"
+  },
+  {
+    "id": "missing_singer_country",
+    "ambiguity_type": "missing_reference",
+    "ambiguous_question": "Which country is that singer from?",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Which singer the user is referring to.",
+    "user_resolution": "I mean Rose White.",
+    "resolved_question": "Which country is Rose White from?",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT Country FROM singer WHERE Name = 'Rose White'"
+  },
+  {
+    "id": "missing_stadium_capacity",
+    "ambiguity_type": "missing_reference",
+    "ambiguous_question": "What is the capacity of that stadium?",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Which stadium the user is referring to.",
+    "user_resolution": "I mean Somerset Park.",
+    "resolved_question": "What is the capacity of Somerset Park?",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT Capacity FROM stadium WHERE Name = 'Somerset Park'"
+  },
+  {
+    "id": "missing_concert_year",
+    "ambiguity_type": "missing_reference",
+    "ambiguous_question": "What year was that concert held?",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Which concert the user is referring to.",
+    "user_resolution": "I mean Super bootcamp.",
+    "resolved_question": "What year was the concert named Super bootcamp held?",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT Year FROM concert WHERE concert_Name = 'Super bootcamp'"
+  }
+]

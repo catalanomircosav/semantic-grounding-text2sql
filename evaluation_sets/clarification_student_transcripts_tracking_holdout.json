@@ -1,0 +1,222 @@
+[
+  {
+    "id": "scope_courses_zero_sections",
+    "ambiguity_type": "entity_event_scope",
+    "ambiguous_question": "Show each course with its number of sections.",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Whether courses with no sections should be included.",
+    "user_resolution": "Include every course, using zero for courses with no recorded sections.",
+    "resolved_question": "Show every course with its number of sections, including courses with no sections with a count of zero.",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT c.course_name, COUNT(s.section_id) FROM Courses AS c LEFT JOIN Sections AS s ON c.course_id = s.course_id GROUP BY c.course_id"
+  },
+  {
+    "id": "scope_average_course_enrolments_all_courses",
+    "ambiguity_type": "entity_event_scope",
+    "ambiguous_question": "What is the average number of enrolments per course?",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Whether courses with no enrolment-course records should contribute zero.",
+    "user_resolution": "Include all courses and treat courses with no enrolment-course records as zero.",
+    "resolved_question": "What is the average number of enrolment-course records per course across all courses, treating courses with none as zero?",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT AVG(enrolment_count) FROM (SELECT c.course_id, COUNT(sec.student_course_id) AS enrolment_count FROM Courses AS c LEFT JOIN Student_Enrolment_Courses AS sec ON c.course_id = sec.course_id GROUP BY c.course_id)"
+  },
+  {
+    "id": "scope_latest_registered_enrolled_student",
+    "ambiguity_type": "entity_event_scope",
+    "ambiguous_question": "Who is the most recently registered student in the enrolment data?",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Whether to consider all students or only students with an enrolment.",
+    "user_resolution": "Consider only students with at least one enrolment record.",
+    "resolved_question": "Who is the most recently registered student among students with at least one enrolment record?",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT s.first_name, s.last_name, s.date_first_registered FROM Students AS s WHERE EXISTS (SELECT 1 FROM Student_Enrolment AS se WHERE se.student_id = s.student_id) AND s.date_first_registered = (SELECT MAX(s2.date_first_registered) FROM Students AS s2 WHERE EXISTS (SELECT 1 FROM Student_Enrolment AS se2 WHERE se2.student_id = s2.student_id))"
+  },
+  {
+    "id": "scope_average_programs_all_departments",
+    "ambiguity_type": "entity_event_scope",
+    "ambiguous_question": "What is the average number of degree programs per department?",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Whether departments with no degree programs should contribute zero.",
+    "user_resolution": "Include all departments and treat departments with no degree programs as zero.",
+    "resolved_question": "What is the average number of degree programs per department across all departments, treating departments with none as zero?",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT AVG(program_count) FROM (SELECT d.department_id, COUNT(dp.degree_program_id) AS program_count FROM Departments AS d LEFT JOIN Degree_Programs AS dp ON d.department_id = dp.department_id GROUP BY d.department_id)"
+  },
+  {
+    "id": "aggregation_courses_per_all_students",
+    "ambiguity_type": "aggregation_semantics",
+    "ambiguous_question": "What is the average number of courses taken by students?",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Whether to include students with no course enrolment and whether to aggregate per student.",
+    "user_resolution": "Count course-enrolment records per student and include students with none as zero.",
+    "resolved_question": "Across all students, what is the average number of course-enrolment records per student, treating students with none as zero?",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT AVG(course_count) FROM (SELECT s.student_id, COUNT(sec.student_course_id) AS course_count FROM Students AS s LEFT JOIN Student_Enrolment AS se ON s.student_id = se.student_id LEFT JOIN Student_Enrolment_Courses AS sec ON se.student_enrolment_id = sec.student_enrolment_id GROUP BY s.student_id)"
+  },
+  {
+    "id": "aggregation_courses_per_all_enrolments",
+    "ambiguity_type": "aggregation_semantics",
+    "ambiguous_question": "What is the average number of courses in student enrolments?",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Whether to average course rows per enrolment and include enrolments with no courses.",
+    "user_resolution": "Compute the course count for every enrolment and include enrolments with no courses as zero.",
+    "resolved_question": "What is the average number of course records per student enrolment, treating enrolments with no courses as zero?",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT AVG(course_count) FROM (SELECT se.student_enrolment_id, COUNT(sec.student_course_id) AS course_count FROM Student_Enrolment AS se LEFT JOIN Student_Enrolment_Courses AS sec ON se.student_enrolment_id = sec.student_enrolment_id GROUP BY se.student_enrolment_id)"
+  },
+  {
+    "id": "aggregation_results_per_all_transcripts",
+    "ambiguity_type": "aggregation_semantics",
+    "ambiguous_question": "What is the average number of course results per transcript?",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Whether transcripts with no course-result rows should contribute zero.",
+    "user_resolution": "Include every transcript and treat transcripts with no course-result rows as zero.",
+    "resolved_question": "What is the average number of transcript-content rows per transcript, treating transcripts with none as zero?",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT AVG(result_count) FROM (SELECT t.transcript_id, COUNT(tc.student_course_id) AS result_count FROM Transcripts AS t LEFT JOIN Transcript_Contents AS tc ON t.transcript_id = tc.transcript_id GROUP BY t.transcript_id)"
+  },
+  {
+    "id": "aggregation_enrolments_per_all_programs",
+    "ambiguity_type": "aggregation_semantics",
+    "ambiguous_question": "What is the average enrolment count for degree programs?",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Whether degree programs with no enrolments should contribute zero.",
+    "user_resolution": "Compute one enrolment count per degree program and include programs with no enrolments as zero.",
+    "resolved_question": "What is the average number of enrolment records per degree program across all programs, treating programs with none as zero?",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT AVG(enrolment_count) FROM (SELECT dp.degree_program_id, COUNT(se.student_enrolment_id) AS enrolment_count FROM Degree_Programs AS dp LEFT JOIN Student_Enrolment AS se ON dp.degree_program_id = se.degree_program_id GROUP BY dp.degree_program_id)"
+  },
+  {
+    "id": "duplicates_student_per_enrolment",
+    "ambiguity_type": "duplicate_semantics",
+    "ambiguous_question": "List the students represented in enrolment records.",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Whether repeated students should be preserved for separate enrolments.",
+    "user_resolution": "Return one student last name for every enrolment record, preserving repetitions.",
+    "resolved_question": "List one student last name for every student enrolment record, preserving repeated names.",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT s.last_name FROM Student_Enrolment AS se JOIN Students AS s ON se.student_id = s.student_id"
+  },
+  {
+    "id": "duplicates_course_per_enrolment_course",
+    "ambiguity_type": "duplicate_semantics",
+    "ambiguous_question": "List the courses represented in student course-enrolment records.",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Whether repeated courses should be preserved for separate enrolment-course rows.",
+    "user_resolution": "Return one course name for every enrolment-course record, preserving repetitions.",
+    "resolved_question": "List one course name for every Student_Enrolment_Courses record, preserving repeated names.",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT c.course_name FROM Student_Enrolment_Courses AS sec JOIN Courses AS c ON sec.course_id = c.course_id"
+  },
+  {
+    "id": "duplicates_semester_per_enrolment",
+    "ambiguity_type": "duplicate_semantics",
+    "ambiguous_question": "List the semesters represented in student enrolment records.",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Whether repeated semesters should be preserved for separate enrolments.",
+    "user_resolution": "Return one semester name for every enrolment record, preserving repetitions.",
+    "resolved_question": "List one semester name for every student enrolment record, preserving repeated semester names.",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT sem.semester_name FROM Student_Enrolment AS se JOIN Semesters AS sem ON se.semester_id = sem.semester_id"
+  },
+  {
+    "id": "duplicates_department_per_program",
+    "ambiguity_type": "duplicate_semantics",
+    "ambiguous_question": "List the departments represented by degree programs.",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Whether repeated departments should be preserved for separate degree programs.",
+    "user_resolution": "Return one department name for every degree-program record, preserving repetitions.",
+    "resolved_question": "List one department name for every degree-program record, preserving repeated department names.",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT d.department_name FROM Degree_Programs AS dp JOIN Departments AS d ON dp.department_id = d.department_id"
+  },
+  {
+    "id": "count_distinct_enrolled_students",
+    "ambiguity_type": "count_semantics",
+    "ambiguous_question": "How many students are represented in enrolment records?",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Whether to count enrolment records or distinct students.",
+    "user_resolution": "Count distinct students, not enrolment records.",
+    "resolved_question": "How many distinct students have at least one student enrolment record?",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT COUNT(DISTINCT student_id) FROM Student_Enrolment"
+  },
+  {
+    "id": "count_distinct_enrolled_courses",
+    "ambiguity_type": "count_semantics",
+    "ambiguous_question": "How many courses are represented in student course-enrolment records?",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Whether to count enrolment-course rows or distinct courses.",
+    "user_resolution": "Count distinct courses, not enrolment-course records.",
+    "resolved_question": "How many distinct courses occur in Student_Enrolment_Courses records?",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT COUNT(DISTINCT course_id) FROM Student_Enrolment_Courses"
+  },
+  {
+    "id": "count_distinct_program_departments",
+    "ambiguity_type": "count_semantics",
+    "ambiguous_question": "How many departments are represented by degree programs?",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Whether to count degree-program records or distinct departments.",
+    "user_resolution": "Count distinct departments that have at least one degree program.",
+    "resolved_question": "How many distinct departments have at least one degree-program record?",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT COUNT(DISTINCT department_id) FROM Degree_Programs"
+  },
+  {
+    "id": "count_transcript_results",
+    "ambiguity_type": "count_semantics",
+    "ambiguous_question": "How many course results are represented in transcripts?",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Whether to count transcripts or individual transcript-content result rows.",
+    "user_resolution": "Count individual course-result rows in Transcript_Contents.",
+    "resolved_question": "How many course-result rows are recorded in Transcript_Contents?",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT COUNT(*) FROM Transcript_Contents"
+  },
+  {
+    "id": "missing_student_courses",
+    "ambiguity_type": "missing_reference",
+    "ambiguous_question": "Which courses did that student take?",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "The student being referenced.",
+    "user_resolution": "I mean Frida Huel.",
+    "resolved_question": "Which courses did Frida Huel take?",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT c.course_name FROM Students AS s JOIN Student_Enrolment AS se ON s.student_id = se.student_id JOIN Student_Enrolment_Courses AS sec ON se.student_enrolment_id = sec.student_enrolment_id JOIN Courses AS c ON sec.course_id = c.course_id WHERE s.first_name = 'Frida' AND s.last_name = 'Huel'"
+  },
+  {
+    "id": "missing_department_description",
+    "ambiguity_type": "missing_reference",
+    "ambiguous_question": "What is that department's description?",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "The department being referenced.",
+    "user_resolution": "I mean the computer science department.",
+    "resolved_question": "What is the description of the computer science department?",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT department_description FROM Departments WHERE department_name = 'computer science'"
+  },
+  {
+    "id": "missing_transcript_date",
+    "ambiguity_type": "missing_reference",
+    "ambiguous_question": "When was that transcript issued?",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "The transcript being referenced.",
+    "user_resolution": "I mean transcript 5.",
+    "resolved_question": "When was transcript 5 issued?",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT transcript_date FROM Transcripts WHERE transcript_id = 5"
+  },
+  {
+    "id": "missing_student_current_city",
+    "ambiguity_type": "missing_reference",
+    "ambiguous_question": "What city does that student currently live in?",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "The student being referenced.",
+    "user_resolution": "I mean Warren Gleichner.",
+    "resolved_question": "What city does Warren Gleichner currently live in?",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT a.city FROM Students AS s JOIN Addresses AS a ON s.current_address_id = a.address_id WHERE s.first_name = 'Warren' AND s.last_name = 'Gleichner'"
+  }
+]

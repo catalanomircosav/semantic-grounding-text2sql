@@ -1,15 +1,15 @@
 import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any, Optional
+from pathlib import Path
+from time import perf_counter
+from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
-from .types import ConversationState
-
-from time import perf_counter
 from agents.telemetry import extract_token_usage_from_message
-
 from data import format_full_schema_from_json
+
+from .types import ConversationState
 
 
 class BaselineAgent:
@@ -31,40 +31,49 @@ class BaselineAgent:
         fewshot_retriever: Any = None,
         memory_window: int = 50,
         verbose: bool = False,
+        db_id: str | None = None,
+        semantic_enrichment: bool = False
     ):
         self.model = model
         self.schema_json = schema_json
         self.fewshot_retriever = fewshot_retriever
         self.memory_window = memory_window
         self.verbose = verbose
+        self.db_id = db_id
+        self.semantic_enrichment = semantic_enrichment
 
     
     def _format_schema_for_prompt(self) -> str:
         return format_full_schema_from_json(self.schema_json)
 
-        lines = ["Full database schema:"]
+    def _get_database_specific_rules(self) -> str:
+        """
+        Load database-specific semantic grounding when enrichment is enabled.
+        """
 
-        for table in tables:
-            table_name = table["table_name"]
-            lines.append(f"\nTable: {table_name}")
+        if not self.semantic_enrichment:
+            return "No additional database-specific semantic information."
 
-            for col in table.get("columns", []):
-                pk_mark = " [PK]" if col.get("is_primary_key") else ""
-                lines.append(
-                    f"- {col['column_name']} ({col['column_type']}){pk_mark}"
-                )
+        if not self.db_id or Path(self.db_id).name != self.db_id:
+            return "No additional database-specific semantic information."
 
-        if foreign_keys:
-            lines.append("\nForeign keys:")
-            for fk in foreign_keys:
-                lines.append(
-                    f"- {fk['source_table']}.{fk['source_column']} -> "
-                    f"{fk['target_table']}.{fk['target_column']}"
-                )
+        grounding_path = (
+            Path(__file__).resolve().parents[1]
+            / "enrichment"
+            / "grounding"
+            / f"{self.db_id}.txt"
+        )
+        if grounding_path.exists():
+            content = grounding_path.read_text(encoding="utf-8").strip()
+            if content:
+                return content
 
-        return "\n".join(lines)
+        return "No additional database-specific semantic information."
 
     def _format_memory_for_prompt(self, state: ConversationState) -> str:
+        if self.memory_window <= 0:
+            return "No previous conversation history."
+        
         history = state.history[-self.memory_window:]
 
         if not history:
@@ -81,6 +90,7 @@ class BaselineAgent:
     def _build_system_prompt(self, question: str, state: ConversationState) -> str:
         schema_block = self._format_schema_for_prompt()
         memory_block = self._format_memory_for_prompt(state)
+        semantic_block = self._get_database_specific_rules()
 
         fewshot_block = "No few-shot examples available."
         if self.fewshot_retriever is not None:
@@ -119,18 +129,8 @@ Rules:
 {schema_block}
 
 
-Database-specific rules:
-# Concert singer
-
-- singer.Name is the singer/person name. If the question asks for the name of a song, select singer.Song_Name, not singer.Name (singer.Song_Name is the song title/name).
-- stadium.Average is a stored stadium attribute. Do not compute AVG(stadium.Average). Do not compute AVG(stadium.Capacity) unless the question explicitly asks for average capacity.
-- For counting concerts per stadium or per singer, use INNER JOIN from the event/relationship table. Do not include zero-count stadiums/singers unless explicitly requested.
-- Do not use DISTINCT unless the question explicitly asks for distinct, unique, or different values. "All" does not imply DISTINCT.
-- When counting or listing real occurrences of events or relationships, start from the event/relationship table rather than the full entity table.
-- Use LEFT JOIN only if the question explicitly asks to include entities with no related records.
-
-
-
+Database-specific semantic information:
+{semantic_block}
 
 Few-shot examples:
 {fewshot_block}
@@ -143,7 +143,7 @@ Current user request:
         return prompt.strip()
 
     @staticmethod
-    def _safe_json_loads(text: str) -> Optional[dict]:
+    def _safe_json_loads(text: str) -> dict | None:
         if not isinstance(text, str):
             return None
 
@@ -151,8 +151,8 @@ Current user request:
 
         try:
             return json.loads(text)
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"Error parsing JSON: {e}")
 
         start = text.find("{")
         end = text.rfind("}")
@@ -160,12 +160,12 @@ Current user request:
             candidate = text[start:end + 1]
             try:
                 return json.loads(candidate)
-            except Exception:
-                return None
+            except Exception as e:
+                print(f"Error parsing JSON from candidate substring: {e}")
 
         return None
 
-    def _parse_single_sql(self, text: str) -> Optional[str]:
+    def _parse_single_sql(self, text: str) -> str | None:
         payload = self._safe_json_loads(text)
         if not isinstance(payload, dict):
             return None
@@ -248,7 +248,7 @@ Current user request:
         question: str,
         state: ConversationState,
         n_samples: int = 5,
-        max_workers: Optional[int] = None,
+        max_workers: int | None = None,
     ) -> dict[str, Any]:
         """
         Generate N independent SQL candidates in parallel.
@@ -313,38 +313,3 @@ Current user request:
             "latency_sec": latency_sec,
             "error": None if candidate_sqls else "No valid SQL candidates parsed",
         }
-    
-# Other semantic grounding
-
-f""""
-
-# Museum visit
-
-- visit represents one museum visit record by a visitor.
-- visit.Num_of_Ticket is the number of tickets bought in that single visit, not the number of separate visits.
-- To find visitors who visited more than once, count visit rows per visitor: GROUP BY visitor_ID HAVING COUNT(*) > 1.
-- Total_spent is the money spent in a visit; total spending by a visitor requires SUM(Total_spent) grouped by visitor_ID.
-- Preserve the column order requested by the question.
-- For "largest/highest/most" questions asking for one result, use ORDER BY ... DESC LIMIT 1 unless ties are explicitly requested.
-
-# Student transcripts tracking
-
-DB notes:
-- Student_Enrolment records a student's enrolment in one degree program during one semester.
-- Student_Enrolment_Courses links an enrolment to courses.
-- Sections are course sections; count Sections rows to count sections per course.
-- Transcript_Contents links transcripts to course results; count rows there for course results.
-- For counting related records, use INNER JOIN from the detail/relationship table unless zero-count entities are explicitly requested.
-- Preserve requested output order: "name and id" means name first, id second; "date and id" means date first, id second.
-- For students enrolled in a program type, use DISTINCT because students may appear in multiple enrolment rows.
-- Degree_Programs.degree_summary_name uses exact values such as 'Bachelor'.
-- The state North Carolina is stored as 'NorthCarolina'.
-- For "substring the X", search for X, not the literal phrase "the X".
-Additional Spider-style rules for this DB:
-- For "courses with/at most/less than N sections", use INNER JOIN Courses-Sections and count Sections rows. Do not include courses with zero sections unless explicitly requested.
-- In this DB, "number of students enrolled" usually means number of Student_Enrolment rows, not COUNT(DISTINCT student_id).
-- For degree-program enrolment counts, use COUNT(*) over Student_Enrolment rows.
-- For questions asking students enrolled in 2 degree programs, match Spider by grouping only by student_id and using HAVING COUNT(*) = 2, even if the wording mentions "in one semester".
-- When the requested output is only course_name, group by course_name rather than course_id.
-
-"""

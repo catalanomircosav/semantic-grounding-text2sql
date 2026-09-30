@@ -1,0 +1,14 @@
+[
+  {
+    "id": "distinct_degree_names",
+    "question": "How many different degree names are offered?",
+    "sql": "SELECT COUNT(DISTINCT degree_summary_name) FROM Degree_Programs",
+    "explanation": "In this database, a degree name is represented by degree_summary_name; degree_program_id identifies a specific program."
+  },
+  {
+    "id": "course_with_most_enrolments",
+    "question": "What's the name of the course with most number of enrollments?",
+    "sql": "SELECT c.course_name FROM Courses AS c JOIN Student_Enrolment_Courses AS sec ON c.course_id = sec.course_id GROUP BY c.course_name ORDER BY COUNT(*) DESC LIMIT 1",
+    "explanation": "Use this FAQ when the request asks for the course with the most enrolment records. Group by the requested course_name and count Student_Enrolment_Courses rows."
+  }
+]

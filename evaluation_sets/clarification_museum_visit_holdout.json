@@ -1,0 +1,222 @@
+[
+  {
+    "id": "scope_museums_zero_visits",
+    "ambiguity_type": "entity_event_scope",
+    "ambiguous_question": "Show each museum with its number of visits.",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Whether to include museums with no recorded visits.",
+    "user_resolution": "Include every museum, using zero for museums with no recorded visits.",
+    "resolved_question": "Show every museum with its number of recorded visits, including museums with no visits with a count of zero.",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT m.Name, COUNT(v.visitor_ID) FROM museum AS m LEFT JOIN visit AS v ON m.Museum_ID = v.Museum_ID GROUP BY m.Museum_ID"
+  },
+  {
+    "id": "scope_average_tickets_all_visitors",
+    "ambiguity_type": "entity_event_scope",
+    "ambiguous_question": "What is the average number of museum tickets per visitor?",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Whether visitors with no visits should contribute zero tickets.",
+    "user_resolution": "Include all visitors and treat visitors with no recorded visits as having zero tickets.",
+    "resolved_question": "What is the average total number of museum tickets per visitor across all visitors, treating visitors with no visits as zero?",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT AVG(ticket_count) FROM (SELECT vr.ID, COALESCE(SUM(v.Num_of_Ticket), 0) AS ticket_count FROM visitor AS vr LEFT JOIN visit AS v ON vr.ID = v.visitor_ID GROUP BY vr.ID)"
+  },
+  {
+    "id": "scope_youngest_visitor_with_visit",
+    "ambiguity_type": "entity_event_scope",
+    "ambiguous_question": "Who is the youngest visitor in the museum visit data?",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Whether to consider every visitor or only visitors with a recorded visit.",
+    "user_resolution": "Consider only visitors with at least one recorded museum visit.",
+    "resolved_question": "Who is the youngest visitor among visitors with at least one recorded museum visit?",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT vr.Name, vr.Age FROM visitor AS vr WHERE EXISTS (SELECT 1 FROM visit AS v WHERE v.visitor_ID = vr.ID) AND vr.Age = (SELECT MIN(vr2.Age) FROM visitor AS vr2 WHERE EXISTS (SELECT 1 FROM visit AS v2 WHERE v2.visitor_ID = vr2.ID))"
+  },
+  {
+    "id": "scope_average_staff_visited_museums",
+    "ambiguity_type": "entity_event_scope",
+    "ambiguous_question": "What is the average number of staff for museums in the visit data?",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Whether to include all museums or only museums with visits.",
+    "user_resolution": "Use only museums with at least one recorded visit and count each museum once.",
+    "resolved_question": "What is the average number of staff across museums with at least one recorded visit, counting each museum once?",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT AVG(m.Num_of_Staff) FROM museum AS m WHERE EXISTS (SELECT 1 FROM visit AS v WHERE v.Museum_ID = m.Museum_ID)"
+  },
+  {
+    "id": "aggregation_distinct_visitor_age",
+    "ambiguity_type": "aggregation_semantics",
+    "ambiguous_question": "What is the average age of visitors in the museum visit records?",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Whether frequent visitors should be counted once or once per visit.",
+    "user_resolution": "Count each distinct visitor once, regardless of the number of visits.",
+    "resolved_question": "What is the average age of distinct visitors with at least one museum visit, counting each visitor once?",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT AVG(vr.Age) FROM visitor AS vr WHERE vr.ID IN (SELECT DISTINCT v.visitor_ID FROM visit AS v)"
+  },
+  {
+    "id": "aggregation_distinct_membership_level",
+    "ambiguity_type": "aggregation_semantics",
+    "ambiguous_question": "What is the average membership level represented in museum visits?",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Whether membership levels are weighted by visits or visitors.",
+    "user_resolution": "Count each distinct visitor once rather than weighting visitors by their number of visits.",
+    "resolved_question": "What is the average membership level of distinct visitors with at least one museum visit?",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT AVG(vr.Level_of_membership) FROM visitor AS vr WHERE vr.ID IN (SELECT DISTINCT v.visitor_ID FROM visit AS v)"
+  },
+  {
+    "id": "aggregation_average_total_spending",
+    "ambiguity_type": "aggregation_semantics",
+    "ambiguous_question": "What is the average visitor spending in the museum records?",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Whether to average individual visit amounts or each visitor's total spending.",
+    "user_resolution": "First total the spending for each visitor, then average those visitor totals.",
+    "resolved_question": "Among visitors with recorded visits, what is the average of each visitor's total spending?",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT AVG(visitor_total) FROM (SELECT visitor_ID, SUM(Total_spent) AS visitor_total FROM visit GROUP BY visitor_ID)"
+  },
+  {
+    "id": "aggregation_tickets_by_museum",
+    "ambiguity_type": "aggregation_semantics",
+    "ambiguous_question": "How many tickets were purchased for museums?",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Whether one overall total or a separate total per museum is requested.",
+    "user_resolution": "Give a separate ticket total for each museum with recorded visits.",
+    "resolved_question": "For each museum with recorded visits, show its name and the total number of tickets purchased.",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT m.Name, SUM(v.Num_of_Ticket) FROM visit AS v JOIN museum AS m ON v.Museum_ID = m.Museum_ID GROUP BY m.Museum_ID"
+  },
+  {
+    "id": "duplicates_museum_per_visit",
+    "ambiguity_type": "duplicate_semantics",
+    "ambiguous_question": "List the museums represented in the visit records.",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Whether repeated museums should be preserved for separate visit records.",
+    "user_resolution": "Return one museum name for every visit record, preserving repeated museum names.",
+    "resolved_question": "List one museum name for every recorded visit, preserving repeated museum names.",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT m.Name FROM visit AS v JOIN museum AS m ON v.Museum_ID = m.Museum_ID"
+  },
+  {
+    "id": "duplicates_visitor_per_visit",
+    "ambiguity_type": "duplicate_semantics",
+    "ambiguous_question": "List the visitors represented in museum visit records.",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Whether repeated visitors should be preserved for separate visits.",
+    "user_resolution": "Return one visitor name for every visit record, preserving repeated visitor names.",
+    "resolved_question": "List one visitor name for every museum visit record, preserving repeated names.",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT vr.Name FROM visit AS v JOIN visitor AS vr ON v.visitor_ID = vr.ID"
+  },
+  {
+    "id": "duplicates_membership_per_visit",
+    "ambiguity_type": "duplicate_semantics",
+    "ambiguous_question": "List the membership levels represented in museum visits.",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Whether to return distinct levels or one level per visit.",
+    "user_resolution": "Return one membership level for every visit record, preserving repeated values.",
+    "resolved_question": "List the visitor membership level for every museum visit record, preserving repeated values.",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT vr.Level_of_membership FROM visit AS v JOIN visitor AS vr ON v.visitor_ID = vr.ID"
+  },
+  {
+    "id": "duplicates_open_year_per_visit",
+    "ambiguity_type": "duplicate_semantics",
+    "ambiguous_question": "List the museum opening years represented in visit records.",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Whether to return distinct opening years or one value per visit.",
+    "user_resolution": "Return one museum opening year for every visit record, preserving repetitions.",
+    "resolved_question": "List the museum opening year for every recorded visit, preserving repeated year values.",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT m.Open_Year FROM visit AS v JOIN museum AS m ON v.Museum_ID = m.Museum_ID"
+  },
+  {
+    "id": "count_distinct_visitors",
+    "ambiguity_type": "count_semantics",
+    "ambiguous_question": "How many visitors are represented in the museum visit records?",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Whether to count visit records or distinct visitors.",
+    "user_resolution": "Count distinct visitors, not visit records.",
+    "resolved_question": "How many distinct visitors have at least one recorded museum visit?",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT COUNT(DISTINCT visitor_ID) FROM visit"
+  },
+  {
+    "id": "count_distinct_visited_museums",
+    "ambiguity_type": "count_semantics",
+    "ambiguous_question": "How many museums are represented by the visit records?",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Whether to count visits or distinct museums.",
+    "user_resolution": "Count distinct museums that occur in visit records.",
+    "resolved_question": "How many distinct museums have at least one recorded visit?",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT COUNT(DISTINCT Museum_ID) FROM visit"
+  },
+  {
+    "id": "count_high_membership_visits",
+    "ambiguity_type": "count_semantics",
+    "ambiguous_question": "How many high-membership visitors are in the museum visit data?",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Whether to count distinct visitors or visit records involving them.",
+    "user_resolution": "Count visit records involving a visitor whose membership level is greater than four.",
+    "resolved_question": "How many museum visit records involve visitors with a membership level greater than four?",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT COUNT(*) FROM visit AS v JOIN visitor AS vr ON v.visitor_ID = vr.ID WHERE vr.Level_of_membership > 4"
+  },
+  {
+    "id": "count_tickets_or_visits",
+    "ambiguity_type": "count_semantics",
+    "ambiguous_question": "How many tickets are represented in the museum visit data?",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "Whether to count visit rows or sum tickets purchased.",
+    "user_resolution": "Sum the number of tickets purchased across all visit records.",
+    "resolved_question": "What is the total number of tickets purchased across all museum visit records?",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT SUM(Num_of_Ticket) FROM visit"
+  },
+  {
+    "id": "missing_visitor_spending",
+    "ambiguity_type": "missing_reference",
+    "ambiguous_question": "How much did that visitor spend?",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "The visitor being referenced.",
+    "user_resolution": "I mean Arjen Robben.",
+    "resolved_question": "How much did Arjen Robben spend across all museum visits?",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT SUM(v.Total_spent) FROM visit AS v JOIN visitor AS vr ON v.visitor_ID = vr.ID WHERE vr.Name = 'Arjen Robben'"
+  },
+  {
+    "id": "missing_museum_tickets",
+    "ambiguity_type": "missing_reference",
+    "ambiguous_question": "How many tickets were purchased for that museum?",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "The museum being referenced.",
+    "user_resolution": "I mean Capital Plaza Museum.",
+    "resolved_question": "How many tickets were purchased in total for Capital Plaza Museum?",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT SUM(v.Num_of_Ticket) FROM visit AS v JOIN museum AS m ON v.Museum_ID = m.Museum_ID WHERE m.Name = 'Capital Plaza Museum'"
+  },
+  {
+    "id": "missing_visitor_membership",
+    "ambiguity_type": "missing_reference",
+    "ambiguous_question": "What is that visitor's membership level?",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "The visitor being referenced.",
+    "user_resolution": "I mean Fernando Gago.",
+    "resolved_question": "What is Fernando Gago's membership level?",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT Level_of_membership FROM visitor WHERE Name = 'Fernando Gago'"
+  },
+  {
+    "id": "missing_museum_open_year",
+    "ambiguity_type": "missing_reference",
+    "ambiguous_question": "When did that museum open?",
+    "expected_action_ambiguous": "CLARIFY",
+    "clarification_target": "The museum being referenced.",
+    "user_resolution": "I mean RiverPark Museum.",
+    "resolved_question": "In what year did RiverPark Museum open?",
+    "expected_action_resolved": "ANSWER",
+    "gold_sql": "SELECT Open_Year FROM museum WHERE Name = 'RiverPark Museum'"
+  }
+]

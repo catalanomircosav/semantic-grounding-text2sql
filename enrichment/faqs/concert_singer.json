@@ -1,0 +1,8 @@
+[
+  {
+    "id": "maximum_capacity_and_stored_average",
+    "question": "What is the maximum capacity and the average of all stadiums?",
+    "sql": "SELECT MAX(Capacity), Average FROM stadium",
+    "explanation": "Use this FAQ only when 'average' denotes the stored stadium.Average attribute alongside maximum capacity. Do not use it when the request explicitly asks for average capacity or capacities, which requires AVG(Capacity)."
+  }
+]

@@ -1,0 +1,6 @@
+- singer.Name is the singer/person name. If the question asks for the name of a song, select singer.Song_Name, not singer.Name (singer.Song_Name is the song title/name).
+- stadium.Average is a stored stadium attribute. Do not compute AVG(stadium.Average). Do not compute AVG(stadium.Capacity) unless the question explicitly asks for average capacity.
+- For counting concerts per stadium or per singer, use INNER JOIN from the event/relationship table. Do not include zero-count stadiums/singers unless explicitly requested.
+- Do not use DISTINCT unless the question explicitly asks for distinct, unique, or different values. "All" does not imply DISTINCT.
+- When counting or listing real occurrences of events or relationships, start from the event/relationship table rather than the full entity table.
+- Use LEFT JOIN only if the question explicitly asks to include entities with no related records.

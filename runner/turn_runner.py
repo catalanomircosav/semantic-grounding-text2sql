@@ -191,6 +191,12 @@ class TurnRunner:
         logged_tokens_output = int(agent_output.get("tokens_output", 0) or 0)
         logged_latency_sec = float(agent_output.get("latency_sec", 0.0) or 0.0)
 
+        logged_num_tool_calls = int(
+            agent_output.get("num_tool_calls", 0) or 0
+        )
+
+        tool_trace = agent_output.get("tool_trace", []) or []
+
         predicted_sql = None
         predicted_result = None
 
@@ -297,6 +303,7 @@ class TurnRunner:
             tokens_output=logged_tokens_output,
             latency_sec=logged_latency_sec,
             estimated_cost=0.0,
+            num_tool_calls=logged_num_tool_calls,
             candidate_sqls=candidate_sqls,
             candidate_diversity=cand_div,
             error=error,
@@ -312,6 +319,8 @@ class TurnRunner:
                 "oracle_best_exact_match": oracle_result.best_exact_match if oracle_result is not None else None,
                 "oracle_best_component_match": oracle_result.best_component_match if oracle_result is not None else None,
                 "oracle_best_execution_match": oracle_result.best_execution_match if oracle_result is not None else None,
+                "num_tool_calls": logged_num_tool_calls,
+                "tool_trace": _make_json_safe(tool_trace),
             },
         )
 

@@ -7,8 +7,6 @@ from data import (
     DatabaseContext,
 )
 from fewshot_retrieval import FewShotRetriever
-from models.openai_chat_model import get_openai_chat_model
-
 
 @dataclass
 class DatabasePackage:
@@ -32,6 +30,7 @@ def prepare_database(
     spider_path: str | Path = "../data/spider",
     model_name: str = "gpt-4o",
     temperature: float = 0.0,
+    eval_start: int = 0,
     eval_limit: Optional[int] = 50,
 ) -> DatabasePackage:
     """
@@ -67,8 +66,21 @@ def prepare_database(
     # ---------------------------
     # 4. Evaluation turns (conversation)
     # ---------------------------
-    eval_turns = context.get_eval_turns(limit=eval_limit)
+    if eval_start < 0:
+        raise ValueError("eval_start must be >= 0")
+    
+    if  eval_limit is not None and eval_limit < 0:
+        raise ValueError("eval_limit must be >= 0 or None")
+    
+    all_eval_turns = context.get_eval_turns(limit=None)
 
+    if eval_limit is None:
+        eval_turns = all_eval_turns[eval_start:]
+    else:
+        eval_turns = all_eval_turns[
+            eval_start : eval_start + eval_limit
+        ]
+    
     # ---------------------------
     # Final package
     # ---------------------------
